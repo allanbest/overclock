@@ -1,0 +1,293 @@
+{
+  "model": "sonnet",
+  "summary": {
+    "baseline": {
+      "blocks": 2,
+      "five_hour_pct_used": 4.0,
+      "seven_day_pct_used": 0.0,
+      "api_equiv_cost": 1.3858,
+      "correct": "12/12"
+    },
+    "overclock": {
+      "blocks": 2,
+      "five_hour_pct_used": 4.0,
+      "seven_day_pct_used": 1.0,
+      "api_equiv_cost": 0.9697,
+      "correct": "12/12"
+    }
+  },
+  "blocks": [
+    {
+      "arm": "baseline",
+      "five_hour_delta": 0.03,
+      "seven_day_delta": 0.0,
+      "window_reset": false,
+      "runs": [
+        {
+          "task": "big-log",
+          "arm": "baseline",
+          "ok": true,
+          "turns": 4,
+          "cost": 0.1932215,
+          "cache_write": 42802,
+          "cache_read": 120075,
+          "output": 999
+        },
+        {
+          "task": "big-log",
+          "arm": "baseline",
+          "ok": true,
+          "turns": 4,
+          "cost": 0.18670520000000002,
+          "cache_write": 42558,
+          "cache_read": 78012,
+          "output": 866
+        },
+        {
+          "task": "mid-log",
+          "arm": "baseline",
+          "ok": true,
+          "turns": 2,
+          "cost": 0.2085615,
+          "cache_write": 50156,
+          "cache_read": 36395,
+          "output": 429
+        },
+        {
+          "task": "mid-log",
+          "arm": "baseline",
+          "ok": true,
+          "turns": 2,
+          "cost": 0.11565929999999999,
+          "cache_write": 26289,
+          "cache_read": 60253,
+          "output": 447
+        },
+        {
+          "task": "chat",
+          "arm": "baseline",
+          "ok": true,
+          "turns": 1,
+          "cost": 0.0616762,
+          "cache_write": 12529,
+          "cache_read": 23862,
+          "output": 917
+        },
+        {
+          "task": "chat",
+          "arm": "baseline",
+          "ok": true,
+          "turns": 1,
+          "cost": 0.060904200000000006,
+          "cache_write": 12531,
+          "cache_read": 23862,
+          "output": 839
+        }
+      ]
+    },
+    {
+      "arm": "overclock",
+      "five_hour_delta": 0.02,
+      "seven_day_delta": 0.01,
+      "window_reset": false,
+      "runs": [
+        {
+          "task": "big-log",
+          "arm": "overclock",
+          "ok": true,
+          "turns": 2,
+          "cost": 0.09094160000000001,
+          "cache_write": 19767,
+          "cache_read": 60756,
+          "output": 579
+        },
+        {
+          "task": "big-log",
+          "arm": "overclock",
+          "ok": true,
+          "turns": 2,
+          "cost": 0.0900417,
+          "cache_write": 19752,
+          "cache_read": 60757,
+          "output": 495
+        },
+        {
+          "task": "mid-log",
+          "arm": "overclock",
+          "ok": true,
+          "turns": 2,
+          "cost": 0.088134,
+          "cache_write": 19580,
+          "cache_read": 60760,
+          "output": 373
+        },
+        {
+          "task": "mid-log",
+          "arm": "overclock",
+          "ok": true,
+          "turns": 2,
+          "cost": 0.0887983,
+          "cache_write": 19771,
+          "cache_read": 60763,
+          "output": 363
+        },
+        {
+          "task": "chat",
+          "arm": "overclock",
+          "ok": true,
+          "turns": 1,
+          "cost": 0.0616622,
+          "cache_write": 13038,
+          "cache_read": 23862,
+          "output": 712
+        },
+        {
+          "task": "chat",
+          "arm": "overclock",
+          "ok": true,
+          "turns": 1,
+          "cost": 0.0616882,
+          "cache_write": 13032,
+          "cache_read": 23862,
+          "output": 717
+        }
+      ]
+    },
+    {
+      "arm": "baseline",
+      "five_hour_delta": 0.01,
+      "seven_day_delta": 0.0,
+      "window_reset": false,
+      "runs": [
+        {
+          "task": "big-log",
+          "arm": "baseline",
+          "ok": true,
+          "turns": 6,
+          "cost": 0.11153080000000001,
+          "cache_write": 19598,
+          "cache_read": 186788,
+          "output": 1444
+        },
+        {
+          "task": "big-log",
+          "arm": "baseline",
+          "ok": true,
+          "turns": 4,
+          "cost": 0.1018829,
+          "cache_write": 19254,
+          "cache_read": 143209,
+          "output": 1053
+        },
+        {
+          "task": "mid-log",
+          "arm": "baseline",
+          "ok": true,
+          "turns": 2,
+          "cost": 0.10736129999999999,
+          "cache_write": 24102,
+          "cache_read": 60253,
+          "output": 492
+        },
+        {
+          "task": "mid-log",
+          "arm": "baseline",
+          "ok": true,
+          "turns": 2,
+          "cost": 0.11510580000000001,
+          "cache_write": 26168,
+          "cache_read": 60258,
+          "output": 440
+        },
+        {
+          "task": "chat",
+          "arm": "baseline",
+          "ok": true,
+          "turns": 1,
+          "cost": 0.0613822,
+          "cache_write": 12528,
+          "cache_read": 23862,
+          "output": 888
+        },
+        {
+          "task": "chat",
+          "arm": "baseline",
+          "ok": true,
+          "turns": 1,
+          "cost": 0.0618022,
+          "cache_write": 12528,
+          "cache_read": 23862,
+          "output": 930
+        }
+      ]
+    },
+    {
+      "arm": "overclock",
+      "five_hour_delta": 0.02,
+      "seven_day_delta": 0.0,
+      "window_reset": false,
+      "runs": [
+        {
+          "task": "big-log",
+          "arm": "overclock",
+          "ok": true,
+          "turns": 3,
+          "cost": 0.09902520000000001,
+          "cache_write": 20409,
+          "cache_read": 104372,
+          "output": 694
+        },
+        {
+          "task": "big-log",
+          "arm": "overclock",
+          "ok": true,
+          "turns": 2,
+          "cost": 0.09041740000000001,
+          "cache_write": 19806,
+          "cache_read": 60754,
+          "output": 511
+        },
+        {
+          "task": "mid-log",
+          "arm": "overclock",
+          "ok": true,
+          "turns": 2,
+          "cost": 0.0881236,
+          "cache_write": 19425,
+          "cache_read": 60756,
+          "output": 434
+        },
+        {
+          "task": "mid-log",
+          "arm": "overclock",
+          "ok": true,
+          "turns": 2,
+          "cost": 0.08821580000000001,
+          "cache_write": 19428,
+          "cache_read": 60758,
+          "output": 442
+        },
+        {
+          "task": "chat",
+          "arm": "overclock",
+          "ok": true,
+          "turns": 1,
+          "cost": 0.0612142,
+          "cache_write": 13036,
+          "cache_read": 23862,
+          "output": 668
+        },
+        {
+          "task": "chat",
+          "arm": "overclock",
+          "ok": true,
+          "turns": 1,
+          "cost": 0.061392199999999994,
+          "cache_write": 13038,
+          "cache_read": 23862,
+          "output": 685
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "name": "overclock",
+  "description": "Make Claude cheaper per task without making it worse: trims noisy command output before Claude reads it, sets lean working habits, delegates work to cheap Haiku/Sonnet helpers, orchestrates multi-agent jobs efficiently, and hands long tasks off to fresh sessions.",
+  "version": "0.3.0",
+  "author": {
+    "name": "allanbest",
+    "url": "https://github.com/allanbest"
+  },
+  "homepage": "https://github.com/allanbest/overclock",
+  "repository": "https://github.com/allanbest/overclock",
+  "license": "MIT",
+  "keywords": [
+    "tokens",
+    "cost",
+    "context",
+    "efficiency",
+    "compression",
+    "hooks"
+  ]
+}
