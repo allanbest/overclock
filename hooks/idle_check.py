@@ -18,7 +18,9 @@ before the cache expires. If that already happened, this hook stays quiet.
 Settings (environment variables, optional):
   OVERCLOCK_IDLE_MINUTES     idle time before warning (default 60)
   OVERCLOCK_IDLE_MIN_TOKENS  only warn above this context size (default 60000)
-  OVERCLOCK_IDLE_MODE        "hold" (default) holds the message once; "note" only adds a notice
+  OVERCLOCK_IDLE_MODE        "auto" (default): hold the message once, but after you've sent it
+                             anyway twice in a row, only show a note (until you next take the advice);
+                             "hold": always hold once; "note": never hold
   OVERCLOCK_OFF=1            disable
 """
 import json
@@ -30,7 +32,26 @@ from datetime import datetime, timezone
 
 IDLE_MINUTES = float(os.environ.get("OVERCLOCK_IDLE_MINUTES", "60"))
 MIN_TOKENS = int(os.environ.get("OVERCLOCK_IDLE_MIN_TOKENS", "60000"))
-MODE = os.environ.get("OVERCLOCK_IDLE_MODE", "hold")
+MODE = os.environ.get("OVERCLOCK_IDLE_MODE", "auto")
+IGNORE_LIMIT = 2  # in auto mode: after this many "sent it anyway" in a row, only show a note
+STATS = os.path.join(os.path.expanduser(os.environ.get("OVERCLOCK_HOME", "~/.claude/overclock")), "idle-stats.json")
+
+
+def load_stats():
+    try:
+        with open(STATS) as f:
+            return json.load(f)
+    except Exception:
+        return {"ignored": 0, "last_hold": 0}
+
+
+def save_stats(st):
+    try:
+        os.makedirs(os.path.dirname(STATS), exist_ok=True)
+        with open(STATS, "w") as f:
+            json.dump(st, f)
+    except OSError:
+        pass
 TAIL_BYTES = 400_000
 
 
@@ -87,6 +108,9 @@ def main():
     gap_id = ts.isoformat()
     try:
         if open(marker).read().strip() == gap_id:
+            st = load_stats()  # the user re-sent after a hold: they chose to continue here
+            st["ignored"] = st.get("ignored", 0) + 1
+            save_stats(st)
             return
     except OSError:
         pass
@@ -104,26 +128,26 @@ def main():
     except Exception:
         pass
     if cp_note:
-        first = (f"  • Cheapest: type /clear or start a new chat in this folder. overclock saved a checkpoint of this "
-                 f"conversation (goal, plan, files, last step) and loads it automatically ({cp_note} instead of {size_txt.split('-')[0]}).\n")
+        cheap = f"/clear or a new chat picks up from overclock's checkpoint ({cp_note} instead of {size_txt.split('-')[0]})"
     else:
-        first = "  • Cheapest: if you don't need this conversation's details, start a new chat.\n"
-    advice = (
-        f"overclock: this conversation has been idle for {idle_txt}, so its cache has expired. "
-        f"Your next message will re-process the whole {size_txt} conversation at full cost, which uses "
-        f"a noticeable part of your usage limit.\n"
-        f"Options:\n"
-        + first
-        + f"  • Or send your message again to continue here anyway (you won't be asked twice)."
-    )
+        cheap = "a new chat is cheapest if you don't need this conversation's details"
+    advice = (f"overclock: idle {idle_txt}, cache expired. Continuing here re-reads the whole {size_txt} chat "
+              f"at full cost; {cheap}.")
     with open(marker, "w") as f:
         f.write(gap_id)
 
-    if MODE == "note":
+    st = load_stats()
+    mode = MODE
+    if mode == "auto":
+        mode = "note" if st.get("ignored", 0) >= IGNORE_LIMIT else "hold"
+    st["last_hold"] = datetime.now(timezone.utc).timestamp()  # time of the last warning (hold or note)
+    save_stats(st)
+    if mode == "note":
         print(json.dumps({"systemMessage": advice}))
-    else:
-        preview = prompt if len(prompt) <= 300 else prompt[:300] + "…"
-        print(json.dumps({"decision": "block", "reason": advice + f"\n\nYour message (not sent yet):\n{preview}"}))
+        return
+    preview = prompt if len(prompt) <= 300 else prompt[:300] + "…"
+    print(json.dumps({"decision": "block", "reason": advice + " Send your message again to continue here "
+                      f"(you won't be asked twice).\n\nYour message (not sent yet):\n{preview}"}))
 
 
 if __name__ == "__main__":

@@ -322,5 +322,30 @@ class TestTiers(unittest.TestCase):
                            input=ev, capture_output=True, text=True, env=env)
         self.assertNotIn("model tier", r.stdout)
 
+
+class TestIdleAuto(unittest.TestCase):
+    def test_hold_then_note_after_two_ignores(self):
+        home = tempfile.mkdtemp()
+        env = dict(os.environ, OVERCLOCK_HOME=home, TMPDIR=home + "/")
+        env.pop("OVERCLOCK_IDLE_MODE", None)
+        t = os.path.join(home, "s.jsonl")
+
+        def send(ts):
+            with open(t, "w") as f:
+                f.write(json.dumps({"type": "assistant", "timestamp": ts,
+                                    "message": {"usage": {"input_tokens": 1, "cache_read_input_tokens": 150000}}}))
+            ev = json.dumps({"session_id": "s", "transcript_path": t, "prompt": "hi"})
+            run = lambda: subprocess.run([sys.executable, os.path.join(REPO, "hooks", "idle_check.py")],
+                                         input=ev, capture_output=True, text=True, env=env).stdout
+            return run(), run()
+
+        for ts in ("2020-01-01T01:00:00Z", "2020-01-01T02:00:00Z"):
+            first, second = send(ts)
+            self.assertIn('"block"', first)
+            self.assertEqual(second.strip(), "")
+        first, _ = send("2020-01-01T03:00:00Z")
+        self.assertIn("systemMessage", first)
+        self.assertNotIn('"block"', first)
+
 if __name__ == "__main__":
     unittest.main()

@@ -163,13 +163,24 @@ def main():
         return
 
     # Claude Code branch
+    if event.get("source") in ("startup", "clear"):
+        try:
+            from idle_check import load_stats, save_stats
+            st = load_stats()
+            if st.get("last_hold") and time.time() - st["last_hold"] < 1800:
+                st.update(ignored=0, last_hold=0)
+                save_stats(st)
+        except Exception:
+            pass
     parts = []
     if os.environ.get("OVERCLOCK_RULES") != "off":
         parts.append(RULES)
     if os.environ.get("OVERCLOCK_TIERS") != "off":
         try:
             from tiers import block as tier_block
-            parts.append(tier_block())
+            tb = tier_block()
+            if tb:
+                parts.append(tb)
         except Exception:
             pass
     try:

@@ -8,7 +8,7 @@ picked from the active tier's table.
 
 Usage:
   tiers.py show            print the current tier and the options
-  tiers.py set <tier>      save a tier (low, medium, high, extra, max)
+  tiers.py set <tier>      save a tier (low, medium, high, extra, max), or `off`
   tiers.py block           print the routing block injected at session start
   tiers.py fable on|off    allow the Fable tiers (extra, max); off by default
 
@@ -160,7 +160,16 @@ def effective_tier():
     return t, ""
 
 
+def tiers_off():
+    try:
+        return open(TIER_FILE).read().strip().lower() == "off" and not os.environ.get("OVERCLOCK_TIER")
+    except OSError:
+        return False
+
+
 def block():
+    if tiers_off():
+        return ""
     t, fallback = effective_tier()
     cfg = TIERS[t]
     lines = [f"overclock model tier: {t} ({cfg['label']}). Recommended main-chat model: {MAIN_NAMES[cfg['main']]}.",
@@ -180,6 +189,8 @@ def block():
 def show():
     t, fallback = effective_tier()
     fable = has_fable()
+    if tiers_off():
+        return "Tiers are off. Turn on with `set low|medium|high` (or extra/max with Fable on)."
     out = [f"Current tier: {saved_tier()}" + (f" (running as {t}: Fable not available)" if fallback else ""),
            f"Fable tiers: {'on' if fable else 'off'}"
            + ("" if fable else (" (Fable is listed for your account but may need usage credits; "
@@ -211,6 +222,13 @@ def main(argv):
         return 0
     if cmd == "set":
         t = (argv[2] if len(argv) > 2 else "").strip().lower()
+        if t == "off":
+            os.makedirs(ROOT, exist_ok=True)
+            with open(TIER_FILE, "w") as f:
+                f.write("off\n")
+            print("Tiers turned off: new chats won't get routing rules; helpers use their defaults "
+                  "(scout Haiku, worker Sonnet). Turn back on with `set <tier>`.")
+            return 0
         if t not in TIERS:
             print(f"Unknown tier '{t}'. Choose one of: {', '.join(ORDER)}")
             return 1

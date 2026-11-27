@@ -22,7 +22,7 @@ Each message re-sends the whole conversation to the model. Long logs, unfocused 
 | **Lean rules** (hook, ~150 tokens, once per session) | Lead with the answer, batch tool calls, read only needed line ranges, and trust trimmed output. |
 | **`scout` & `worker`** (Claude subagents in `claude-agents/`) | `overclock:scout` (Haiku) for broad read-only lookups; `overclock:worker` (Sonnet) for scoped research/implementation writing full results to disk and returning <150 words. |
 | **Checkpoint + auto-resume** (hooks) | At the end of every Claude turn, writes a ~1–2 KB transcript checkpoint (`~/.claude/overclock/checkpoints/<project>/`) with zero extra model calls. New chats (`/clear` or startup) load the newest checkpoint automatically. |
-| **Idle-session warning** (hook) | Holds the first message once when returning to a 60k+ token chat after the 1-hour cache expires, pointing to `/clear` or a new chat. |
+| **Idle-session warning** (hook) | Claude's cache of your conversation lasts about an hour. If you come back to a big conversation (60k+ tokens) after that, your next message re-processes the whole thing at full cost. overclock holds that message once, before any usage is spent, and points to `/clear` or a new chat (which picks up from the checkpoint). If you send it anyway twice in a row, it stops holding and shows a one-line note instead, until you next take the advice. |
 | **Compaction guide** (hook) | Steers compaction summaries to keep goals, paths, unresolved errors, and active Deepwork dead ends. |
 
 ### 2. Deepwork & Multi-Agent Orchestration (Claude + Antigravity)
@@ -58,7 +58,7 @@ A plugin can't add a new model to Claude's model picker, and switching the main 
 | `extra` | Quality + Fable on the hardest parts | Opus | Sonnet routine, Opus default, Fable for architecture, stubborn bugs, proofs, final review | Fable |
 | `max` | Best quality | Fable | Sonnet only for bulk, Opus and Fable for everything else | off |
 
-`extra` and `max` are **off by default**, because on many plans Fable bills usage credits. Turn them on with `/overclock:tier fable on` if you have credits. overclock also checks for free whether Fable is listed for your account. Run `/overclock:tier` to see the options, or `/overclock:tier medium` to set one; new chats load it automatically (about 250 tokens). Pick the recommended main-chat model with `/model` at the **start** of a chat.
+`extra` and `max` are **off by default**, because on many plans Fable bills usage credits. Turn them on with `/overclock:tier fable on` if you have credits. overclock also checks for free whether Fable is listed for your account. Run `/overclock:tier` to see the options, `/overclock:tier medium` to set one, or `/overclock:tier off` to turn routing off; new chats load it automatically (about 250 tokens). Pick the recommended main-chat model with `/model` at the **start** of a chat.
 
 **The advisor matters more than the helpers.** Claude Code's advisor setting (`advisorModel`, toggled with `/advisor`) sends the *whole conversation* to a stronger model several times per task. In a test with the advisor set to Fable, the advisor was ~70% of the cost. `/overclock:tier` tells you when your advisor setting doesn't match the tier, and the tier tells Claude how sparingly to call it.
 
