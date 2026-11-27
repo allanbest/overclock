@@ -1,8 +1,8 @@
 {
   "name": "overclock",
   "displayName": "Overclock",
-  "version": "1.2.0",
-  "description": "Token-efficient deep research, scientific experimentation, iterative software building, and budget-aware multi-agent orchestration — with Claude context compression and Antigravity native support.",
+  "version": "1.3.0",
+  "description": "Token-efficient deep research, scientific experimentation, iterative software building, and budget-aware multi-agent orchestration — with output trimming, session checkpoints and auto-resume.",
   "logo": "assets/icon.svg",
   "author": {
     "name": "allanbest",

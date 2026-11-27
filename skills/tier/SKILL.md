@@ -1,6 +1,6 @@
 ---
 name: tier
-description: Show or set overclock's model tier (low, medium, high, extra, max), which decides which Claude model each helper uses. Use only when the user runs /overclock:tier or asks to change the overclock tier/level.
+description: (Claude Code only; Antigravity has its own model routing.) Show or set overclock's model tier (low, medium, high, extra, max), which decides which Claude model each helper uses. Use only when the user runs /overclock:tier or asks to change the overclock tier/level.
 argument-hint: "[low|medium|high|extra|max|off | fable on|off]"
 disable-model-invocation: true
 ---

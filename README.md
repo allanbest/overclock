@@ -62,6 +62,18 @@ A plugin can't add a new model to Claude's model picker, and switching the main 
 
 **The advisor matters more than the helpers.** Claude Code's advisor setting (`advisorModel`, toggled with `/advisor`) sends the *whole conversation* to a stronger model several times per task. In a test with the advisor set to Fable, the advisor was ~70% of the cost. `/overclock:tier` tells you when your advisor setting doesn't match the tier, and the tier tells Claude how sparingly to call it.
 
+### Antigravity (Gemini)
+
+Antigravity's hooks work differently, so overclock uses one script, `hooks/antigravity.py`, registered in the root `hooks.json`:
+
+| Part | How it works in Antigravity |
+|---|---|
+| Lean rules + auto-resume | `SessionStart` injects the rules, the newest checkpoint for this workspace, and the active Deepwork project. |
+| Checkpoint | `Stop` parses Antigravity's transcript (plain code, no model call) into the same ~1–2 KB checkpoint, stored in the plugin's data folder. |
+| Output trimming | Antigravity can't change a tool's output afterwards, so `PreToolUse` reroutes **noisy commands** (tests, builds, installs, linters, `git log`) through `hooks/ag_run.py`. It runs the command, trims long output the same way as in Claude Code, and keeps the exit code. Dev servers and watchers are never rerouted, and `OVERCLOCK_RAW` in a command skips it. Antigravity tells the model the command was rewritten, which is expected. stdout and stderr are merged. |
+
+Live test (2026-11-27, Antigravity CLI): a test run printing 85,564 characters reached Gemini as ~3,000, with the failing test and traceback intact, and Gemini named the failure correctly. After a follow-up, a fresh conversation answered "what were we working on?" from the checkpoint without running any tools.
+
 ## Measured results (v0.3.0 / v0.4.0 Claude Code benchmarks)
 
 Real Claude Code sessions (Opus 5.5) with and without overclock, interleaved, 3–6 runs each, on 2026-11-24. Every answer was correct in both versions.
@@ -111,7 +123,7 @@ The routing follows the tier. The biggest saving is turning the advisor off on c
 
 - **Failed commands aren't trimmed in Claude Code.** When a command exits with an error, Claude Code hands the hook text that's already cut, so built-in truncation applies instead.
 - **No effect on context size or prices.** A plugin can't make the context window bigger; it can only keep it emptier.
-- **Output trimming & transcript checkpointing are Claude-specific.** Antigravity uses overclock's Deepwork skills, multi-agent orchestration, and zero-overhead `SessionStart` project loader (`hooks.json`).
+- **Antigravity (Gemini) gets everything except model tiers and the idle warning.** Antigravity routes models itself, and Gemini's cache lifetime isn't documented, so an idle warning could be wrong. See *Antigravity* below for how trimming works there.
 - **Cowork cloud limits.** Cowork loads skills, agents, and hooks, though output replacement is ignored for some tools in Cowork cloud sessions.
 - **Hooks require `python3`**; if unavailable they fail open cleanly.
 

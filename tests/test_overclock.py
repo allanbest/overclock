@@ -235,9 +235,11 @@ class TestSchemas(unittest.TestCase):
         self.assertTrue(os.path.isfile(os.path.join(REPO, root_pj["logo"])))
 
         root_hooks = read_json(os.path.join(REPO, "hooks.json"))
-        ss = root_hooks["overclock-project-resume"]["SessionStart"]
-        self.assertIsInstance(ss, list)
-        self.assertEqual(ss[0]["type"], "command")
+        ag = root_hooks["overclock"]
+        for ev in ("SessionStart", "Stop"):
+            self.assertEqual(ag[ev][0]["type"], "command")
+            self.assertIn("antigravity.py", ag[ev][0]["command"])
+        self.assertEqual(ag["PreToolUse"][0]["matcher"], "run_command")
 
         claude_pj = read_json(os.path.join(REPO, ".claude-plugin", "plugin.json"))
         self.assertEqual(claude_pj["version"], claude_pj_version())
@@ -346,6 +348,63 @@ class TestIdleAuto(unittest.TestCase):
         first, _ = send("2020-01-01T03:00:00Z")
         self.assertIn("systemMessage", first)
         self.assertNotIn('"block"', first)
+
+
+class TestAntigravityPort(unittest.TestCase):
+    AG = os.path.join(REPO, "hooks", "antigravity.py")
+
+    def run_ag(self, event, env=None):
+        e = dict(os.environ, **(env or {}))
+        r = subprocess.run([sys.executable, self.AG], input=json.dumps(event), capture_output=True, text=True, env=e)
+        return json.loads(r.stdout)
+
+    def test_pre_tool_use_rewrites_only_noisy_commands(self):
+        def rw(cmd):
+            return self.run_ag({"hookEventName": "PreToolUse",
+                                "toolCall": {"name": "run_command", "args": {"CommandLine": cmd}}})
+        for cmd in ("npm test", "cd app && pytest -q", "cargo build", "python3 -m unittest -v t"):
+            self.assertIn("ag_run.py", rw(cmd).get("overwrite", {}).get("CommandLine", ""), cmd)
+        for cmd in ("ls -la", "npm run dev", "OVERCLOCK_RAW=1 make", "git status"):
+            self.assertEqual(rw(cmd), {}, cmd)
+
+    def test_wrapper_trims_and_keeps_exit_code(self):
+        import base64
+        cmd = 'python3 -c "import sys\nfor i in range(3000): print(i)\nprint(\'ERROR: boom\'); sys.exit(3)"'
+        r = subprocess.run([sys.executable, os.path.join(REPO, "hooks", "ag_run.py"),
+                            base64.b64encode(cmd.encode()).decode()], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 3)
+        self.assertIn("overclock: output trimmed", r.stdout)
+        self.assertIn("ERROR: boom", r.stdout)
+        short = subprocess.run([sys.executable, os.path.join(REPO, "hooks", "ag_run.py"),
+                                base64.b64encode(b"echo hi").decode()], capture_output=True, text=True)
+        self.assertEqual(short.stdout, "hi\n")
+
+    def test_checkpoint_roundtrip(self):
+        home = tempfile.mkdtemp()
+        ws = tempfile.mkdtemp()
+        t = os.path.join(home, "transcript.jsonl")
+        steps = [
+            {"type": "USER_INPUT", "content": "<USER_REQUEST>\nbuild the parser\n</USER_REQUEST>"},
+            {"type": "PLANNER_RESPONSE", "tool_calls": [{"name": "edit_file", "args": {"Path": os.path.join(ws, "p.py")}},
+                                                        {"name": "run_command", "args": {"CommandLine": "pytest"}}]},
+            {"type": "USER_INPUT", "content": "<USER_REQUEST>\nnow add tests\n</USER_REQUEST>"},
+            {"type": "PLANNER_RESPONSE", "content": "Added tests; all pass."},
+        ]
+        with open(t, "w") as f:
+            f.write("\n".join(json.dumps(x) for x in steps))
+        env = {"OVERCLOCK_HOME": home}
+        self.run_ag({"hookEventName": "Stop", "conversationId": "conv1234", "transcriptPath": t, "cwd": ws}, env)
+        out = self.run_ag({"hookEventName": "SessionStart", "conversationId": "conv9999", "cwd": ws}, env)
+        msg = out["injectSteps"][0]["systemMessage"]["systemMessage"]
+        self.assertIn("build the parser", msg)
+        self.assertIn("p.py", msg)
+        self.assertIn("Added tests", msg)
+        # A one-question conversation never writes a checkpoint.
+        with open(t, "w") as f:
+            f.write(json.dumps(steps[0]))
+        before = len(os.listdir(os.path.dirname(os.path.join(home, "checkpoints", "x"))))
+        self.run_ag({"hookEventName": "Stop", "conversationId": "quick000", "transcriptPath": t, "cwd": ws}, env)
+        self.assertEqual(len(os.listdir(os.path.join(home, "checkpoints"))), before)
 
 if __name__ == "__main__":
     unittest.main()
