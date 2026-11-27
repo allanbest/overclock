@@ -12,6 +12,11 @@ SESSION_START = os.path.join(REPO, "hooks", "session_start.py")
 PRE_COMPACT = os.path.join(REPO, "hooks", "pre_compact.py")
 
 
+def claude_pj_version():
+    with open(os.path.join(REPO, ".claude-plugin", "plugin.json")) as f:
+        return json.load(f)["version"]
+
+
 def read_text(path):
     with open(path, "r", encoding="utf-8") as f:
         return f.read()
@@ -226,7 +231,7 @@ class TestSchemas(unittest.TestCase):
         }
         self.assertTrue(set(root_pj.keys()).issubset(allowed_ag_keys))
         self.assertEqual(root_pj["name"], "overclock")
-        self.assertEqual(root_pj["version"], "1.0.0")
+        self.assertEqual(root_pj["version"], claude_pj_version())
         self.assertTrue(os.path.isfile(os.path.join(REPO, root_pj["logo"])))
 
         root_hooks = read_json(os.path.join(REPO, "hooks.json"))
@@ -235,14 +240,14 @@ class TestSchemas(unittest.TestCase):
         self.assertEqual(ss[0]["type"], "command")
 
         claude_pj = read_json(os.path.join(REPO, ".claude-plugin", "plugin.json"))
-        self.assertEqual(claude_pj["version"], "1.0.0")
+        self.assertEqual(claude_pj["version"], claude_pj_version())
         self.assertEqual(claude_pj["agents"], ["./claude-agents/scout.md", "./claude-agents/worker.md"])
         self.assertFalse(os.path.exists(os.path.join(REPO, "agents")))
         self.assertTrue(os.path.isfile(os.path.join(REPO, "claude-agents", "scout.md")))
         self.assertTrue(os.path.isfile(os.path.join(REPO, "claude-agents", "worker.md")))
 
         mkt = read_json(os.path.join(REPO, ".claude-plugin", "marketplace.json"))
-        self.assertEqual(mkt["plugins"][0]["version"], "1.0.0")
+        self.assertEqual(mkt["plugins"][0]["version"], claude_pj_version())
 
         claude_hooks = read_json(os.path.join(REPO, "hooks", "hooks.json"))
         self.assertIn("SessionStart", claude_hooks["hooks"])
@@ -250,7 +255,7 @@ class TestSchemas(unittest.TestCase):
 
     def test_skills_frontmatter_and_references(self):
         skills_dir = os.path.join(REPO, "skills")
-        expected = {"deepwork", "orchestrate", "reflect", "stop", "handoff"}
+        expected = {"deepwork", "orchestrate", "reflect", "stop", "handoff", "tier"}
         self.assertEqual(set(os.listdir(skills_dir)), expected)
         for name in expected:
             skill_md = os.path.join(skills_dir, name, "SKILL.md")
@@ -263,6 +268,59 @@ class TestSchemas(unittest.TestCase):
             self.assertTrue(os.path.isfile(os.path.join(skills_dir, "deepwork", "references", ref)))
         self.assertTrue(os.path.isfile(PROJECT_PY))
 
+
+
+class TestTiers(unittest.TestCase):
+    def run_tiers(self, *args, env=None):
+        e = dict(os.environ, OVERCLOCK_HOME=self.home, **(env or {}))
+        e.pop("OVERCLOCK_TIER", None)
+        e.update(env or {})
+        return subprocess.run([sys.executable, os.path.join(REPO, "hooks", "tiers.py"), *args],
+                              capture_output=True, text=True, env=e)
+
+    def setUp(self):
+        self.home = tempfile.mkdtemp()
+
+    def test_set_show_and_fallback(self):
+        r = self.run_tiers("set", "medium", env={"OVERCLOCK_FABLE": "0"})
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("overclock model tier: medium", r.stdout)
+        self.assertIn("medium", open(os.path.join(self.home, "tier")).read())
+        # Fable tiers are refused without Fable, and a saved Fable tier falls back to high.
+        self.assertEqual(self.run_tiers("set", "max", env={"OVERCLOCK_FABLE": "0"}).returncode, 1)
+        self.assertEqual(self.run_tiers("set", "max", env={"OVERCLOCK_FABLE": "1"}).returncode, 0)
+        b = self.run_tiers("block", env={"OVERCLOCK_FABLE": "0"}).stdout
+        self.assertIn("overclock model tier: high", b)
+        self.assertIn("needs Fable", b)
+        self.assertEqual(self.run_tiers("set", "bogus").returncode, 1)
+
+    def test_fable_opt_in(self):
+        env = {"OVERCLOCK_FABLE": ""}
+        self.assertEqual(self.run_tiers("set", "extra", env=env).returncode, 1)  # off by default
+        self.assertEqual(self.run_tiers("fable", "on", env=env).returncode, 0)
+        self.assertEqual(self.run_tiers("set", "extra", env=env).returncode, 0)
+        self.run_tiers("fable", "off", env=env)
+        self.assertIn("tier: high", self.run_tiers("block", env=env).stdout)
+
+    def test_env_override_and_routes(self):
+        b = self.run_tiers("block", env={"OVERCLOCK_TIER": "low", "OVERCLOCK_FABLE": "0"}).stdout
+        self.assertIn("→ haiku", b)
+        b = self.run_tiers("block", env={"OVERCLOCK_TIER": "high", "OVERCLOCK_FABLE": "0"}).stdout
+        self.assertNotIn("→ haiku", b)
+        self.assertIn("→ opus", b)
+
+    def test_session_start_injects_tier(self):
+        env = dict(os.environ, OVERCLOCK_HOME=self.home, OVERCLOCK_TIER="low", OVERCLOCK_FABLE="0")
+        ev = json.dumps({"source": "startup", "session_id": "t", "cwd": self.home,
+                         "transcript_path": os.path.join(self.home, "x", "t.jsonl")})
+        r = subprocess.run([sys.executable, os.path.join(REPO, "hooks", "session_start.py")],
+                           input=ev, capture_output=True, text=True, env=env)
+        ctx = json.loads(r.stdout)["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("overclock model tier: low", ctx)
+        env["OVERCLOCK_TIERS"] = "off"
+        r = subprocess.run([sys.executable, os.path.join(REPO, "hooks", "session_start.py")],
+                           input=ev, capture_output=True, text=True, env=env)
+        self.assertNotIn("model tier", r.stdout)
 
 if __name__ == "__main__":
     unittest.main()

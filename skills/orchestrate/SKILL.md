@@ -34,16 +34,23 @@ Final check: <what to verify and how>
 - **Strict disjoint ownership:** no two helpers own the same files or the same question.
 - **Cap at 5 helpers** (usually 2–4 is optimal).
 
-## 3. Platform dispatch table
+## 3. Pick each helper's model from the tier
+
+The session context contains an **overclock model tier** block (set with `/overclock:tier`). It maps kinds of work to models. For every helper, pass `model` explicitly on the Agent call according to that table; it overrides the agent's default. If the block is missing, run `python3 "<plugin>/hooks/tiers.py" block` once. Put the chosen model in the plan's `Helper / Model` column.
+
+- `overclock:scout` is read-only (search, lookups); `overclock:worker` can edit, run commands and research. Either can run on any model.
+- Never change the main chat's model to route work: that re-reads the whole conversation on the new model.
+
+## 4. Platform dispatch table
 
 | Need | Claude Code | Antigravity |
 |---|---|---|
-| Fast read-only codebase/file search | `overclock:scout` (`haiku`) | `invoke_subagent` (`research`, `Model: "flash_lite"` or `"flash"`) |
-| Research / analysis / verification | `overclock:worker` (`sonnet`) | `invoke_subagent` (`self`, `Model: "flash"`, or `research` if local-only) |
-| Parallel disjoint code edits | `overclock:worker` (`sonnet`, disjoint `You own:`) | `invoke_subagent` (`self`, `Workspace: "share"` for isolated worktrees) |
+| Fast read-only codebase/file search | `overclock:scout` (model per tier) | `invoke_subagent` (`research`, `Model: "flash_lite"` or `"flash"`) |
+| Research / analysis / verification | `overclock:worker` (model per tier) | `invoke_subagent` (`self`, `Model: "flash"`, or `research` if local-only) |
+| Parallel disjoint code edits | `overclock:worker` (model per tier, disjoint `You own:`) | `invoke_subagent` (`self`, `Workspace: "share"` for isolated worktrees) |
 | Wide homogeneous fan-out (4+ items) | Batch `overclock:worker` calls | `run_workflow` script or batched `invoke_subagent` |
 
-## 4. Launch helpers in parallel
+## 5. Launch helpers in parallel
 
 Launch all independent helpers in **one turn** with self-contained prompts (point to files rather than pasting large text):
 
@@ -57,7 +64,7 @@ Write full results to: <output file path>
 Reply under 150 words with: Status, Result, Details path, Files changed, Open issues.
 ```
 
-## 5. Combine, verify once, and clean up
+## 6. Combine, verify once, and clean up
 
 - Read the short replies first; open a helper's output file only for parts you actually need.
 - If one helper reports `partial` or `blocked`, fix it yourself or relaunch only that piece.

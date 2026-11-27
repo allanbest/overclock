@@ -29,7 +29,7 @@ RULES = """overclock efficiency rules (quality first):
 - Lead with the answer; no preamble or recap. Keep code, paths, numbers and errors exact.
 - Send independent tool calls together in one message. Search before opening files; read only the line ranges you need; don't re-read unchanged files.
 - Run commands as-is (no head/tail): overclock trims long output, keeping start, end and all error lines, plus a path to the full text.
-- For searches needing many reads, use the overclock:scout subagent.
+- For searches needing many reads, use the overclock:scout subagent (model per the tier below).
 - At a natural break in a long task, suggest /overclock:handoff to continue in a fresh session."""
 
 MAX_CHARS = 2500
@@ -166,6 +166,12 @@ def main():
     parts = []
     if os.environ.get("OVERCLOCK_RULES") != "off":
         parts.append(RULES)
+    if os.environ.get("OVERCLOCK_TIERS") != "off":
+        try:
+            from tiers import block as tier_block
+            parts.append(tier_block())
+        except Exception:
+            pass
     try:
         cp = latest_checkpoint(event)
     except Exception:

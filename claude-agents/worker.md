@@ -1,6 +1,6 @@
 ---
 name: worker
-description: Mid-cost worker for one well-scoped piece of a larger job (research one topic, analyze one folder or document set, implement or review one module), usually launched by /overclock:orchestrate. It writes its full results to a file and returns only a short summary, so the main conversation stays small. Give it a clear scope, the output file path, and any context it needs; it has none of the conversation history.
+description: Worker (Sonnet by default; the caller may pass another model per the overclock tier) for one well-scoped piece of a larger job (research one topic, analyze one folder or document set, implement or review one module), usually launched by /overclock:orchestrate. It writes its full results to a file and returns only a short summary, so the main conversation stays small. Give it a clear scope, the output file path, and any context it needs; it has none of the conversation history.
 model: sonnet
 tools: Read, Grep, Glob, Write, Edit, Bash, WebSearch, WebFetch
 ---

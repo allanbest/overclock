@@ -1,6 +1,6 @@
 ---
 name: scout
-description: Fast, low-cost explorer for broad searches. Use it when finding something would take many file reads, searches or web lookups (e.g. "where is X handled?", "how does this codebase do Y?", "which files mention Z?", surveying a folder of documents). It runs on a cheaper model in its own context and returns a short summary, so the main conversation stays small. Don't use it for a single known file or a quick lookup; do those directly.
+description: Read-only explorer (Haiku by default; the caller may pass another model per the overclock tier) for broad searches. Use it when finding something would take many file reads, searches or web lookups (e.g. "where is X handled?", "how does this codebase do Y?", "which files mention Z?", surveying a folder of documents). It runs on a cheaper model in its own context and returns a short summary, so the main conversation stays small. Don't use it for a single known file or a quick lookup; do those directly.
 model: haiku
 tools: Read, Grep, Glob, WebSearch, WebFetch
 ---

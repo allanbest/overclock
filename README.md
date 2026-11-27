@@ -46,6 +46,22 @@ Each message re-sends the whole conversation to the model. Long logs, unfocused 
 
 Both Claude Code (`startup`, `clear`, `compact`) and Antigravity (`SessionStart`) automatically load the active project's compact `state.md` (<=25 lines / <=1,800 chars) when `.overclock/active` exists — and inject **0 tokens** when no project is active.
 
+### 3. Model tiers (`/overclock:tier`)
+
+A plugin can't add a new model to Claude's model picker, and switching the main chat's model mid-conversation throws away the cache (the whole chat is re-read at full price on the new model). So overclock routes work through **helpers** instead: pick a tier once, and every `overclock:scout` / `overclock:worker` call gets the right model.
+
+| Tier | Priority | Main chat | Helpers | Advisor |
+|---|---|---|---|---|
+| `low` (default) | Save usage | Sonnet | Haiku for lookups, Sonnet for normal work, Opus only for the single hardest piece | off |
+| `medium` | Balanced | Sonnet | Sonnet by default, Opus for hard reasoning, debugging and review, Haiku only for file search | off |
+| `high` | Quality first | Opus | Opus for real work, Sonnet for routine offload, no Haiku | off |
+| `extra` | Quality + Fable on the hardest parts | Opus | Sonnet routine, Opus default, Fable for architecture, stubborn bugs, proofs, final review | Fable |
+| `max` | Best quality | Fable | Sonnet only for bulk, Opus and Fable for everything else | off |
+
+`extra` and `max` are **off by default**, because on many plans Fable bills usage credits. Turn them on with `/overclock:tier fable on` if you have credits. overclock also checks for free whether Fable is listed for your account. Run `/overclock:tier` to see the options, or `/overclock:tier medium` to set one; new chats load it automatically (about 250 tokens). Pick the recommended main-chat model with `/model` at the **start** of a chat.
+
+**The advisor matters more than the helpers.** Claude Code's advisor setting (`advisorModel`, toggled with `/advisor`) sends the *whole conversation* to a stronger model several times per task. In a test with the advisor set to Fable, the advisor was ~70% of the cost. `/overclock:tier` tells you when your advisor setting doesn't match the tier, and the tier tells Claude how sparingly to call it.
+
 ## Measured results (v0.3.0 / v0.4.0 Claude Code benchmarks)
 
 Real Claude Code sessions (Opus 5.5) with and without overclock, interleaved, 3–6 runs each, on 2026-11-24. Every answer was correct in both versions.
@@ -74,6 +90,18 @@ Test (2026-11-25, Sonnet): a two-turn coding session, then "continue where we le
 |---|---|
 | Resume the old conversation (what a cold re-read costs in full) | ~55k tokens |
 | New chat + checkpoint | ~38k, of which ~14k new (the rest is Claude Code's shared system prompt) |
+
+### Model tiers
+
+Same 3-folder log job via `/overclock:orchestrate`, Sonnet main chat, one run each (2026-11-27). All answers correct.
+
+| Run | Helpers chosen | Cost |
+|---|---|---|
+| `low`, advisor = Fable (your current setting) | 3 × Haiku; main chat did the reasoning | $1.40 (of which Fable advisor $1.03) |
+| `high`, advisor = Fable | 3 × Sonnet + 1 × Opus for the hard reasoning | $2.39 (Fable advisor $1.64) |
+| `low`, advisor off | 3 × Haiku + 1 × Opus for the hard reasoning | **$0.41** |
+
+The routing follows the tier. The biggest saving is turning the advisor off on cheap tiers.
 
 ### Subscription usage meter check
 
@@ -122,6 +150,9 @@ To skip Bash output trimming for one command in Claude Code, include `OVERCLOCK_
 | `OVERCLOCK_CHECKPOINT=off` | Don't write transcript checkpoints (also stops checkpoint auto-resume) |
 | `OVERCLOCK_RESUME=off` | Keep writing checkpoints but don't load them in new chats |
 | `OVERCLOCK_RESUME_DAYS=7` | Ignore transcript checkpoints older than this |
+| `OVERCLOCK_TIER=<tier>` | Override the saved tier for one session |
+| `OVERCLOCK_TIERS=off` | Don't load the tier routing block |
+| `OVERCLOCK_FABLE=1` / `0` | Force the Fable tiers on or off |
 
 ## License
 

@@ -1,7 +1,7 @@
 {
   "name": "overclock",
   "description": "Token-efficient deep research, scientific experimentation, iterative software building, and budget-aware multi-agent orchestration — plus Claude context compression, idle-cache protection, and automatic session checkpointing.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "agents": [
     "./claude-agents/scout.md",
     "./claude-agents/worker.md"
