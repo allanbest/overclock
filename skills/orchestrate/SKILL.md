@@ -1,77 +1,72 @@
 ---
 name: orchestrate
-description: Run a large, splittable job with several helper agents while using as little of the usage limit as possible. Use when the user asks for "multi-agent", "parallel agents", "split this up", "use subagents", or gives a job with clearly separate parts (research several topics, review many files or folders, compare several options, update several independent modules). Starts by deciding whether splitting is worth it at all.
+description: Run a large, splittable job with several helper agents while using as little of the usage limit as possible. Use when the user asks for "multi-agent", "parallel agents", "split this up", "use subagents", or gives a job with clearly separate parts (research several topics, review many files or folders, compare several options, update several independent modules), or when a Deepwork phase benefits from parallel sub-questions, sweeps, or disjoint module waves. Starts by deciding whether splitting is worth it at all.
 ---
 
-# Orchestrate (cheap multi-agent work)
+# Orchestrate (budget-aware multi-agent work)
 
-Multi-agent work is powerful but expensive: Anthropic measured multi-agent setups at about 15× the tokens of a normal chat. Every helper starts from zero, re-reads whatever it needs, and its cache is separate from yours. Splitting pays off only when the parts are truly independent and each is big. Your job here is to get the benefit while keeping the usage cost down.
+Multi-agent work is powerful but expensive: Anthropic measured multi-agent setups at about 15× the tokens of a normal chat. Every helper starts from zero and holds a separate context cache. Splitting pays off only when parts are genuinely independent and each is substantial.
 
 ## 1. Decide whether to split
 
-Don't split (do it yourself, or use a single `overclock:scout`) when:
-- the whole job needs fewer than about 10 tool calls, or
-- the parts depend on each other or share a lot of context (most single-feature coding work: one person holding the whole picture is cheaper and better), or
-- the parts would edit the same files.
+**Do NOT split** (do it serially yourself, or use a single cheap lookup helper) when:
+- the whole job needs fewer than about 10 tool calls,
+- the parts depend tightly on each other or share deep reasoning (most single-feature coding, mathematical proofs, core hypothesis reasoning in `science` mode), or
+- two helpers would need to edit the same files.
 
-Split when there are 2–5 parts that are independent, each needing real work (many reads, searches or edits). If you decide not to split, say so in one line and just do the work.
+**Split** when there are 2–5 independent parts, each needing real work (literature sub-questions, orthogonal ablation/seed sweeps, or disjoint software modules after interfaces are locked). If you decide not to split, say so in one line and do the work directly.
 
 ## 2. Plan in a file
 
-Create `.overclock/plan.md` in the working folder (add `.overclock/` to `.gitignore` if it's a git repo):
+Check whether `.overclock/active` exists in the workspace root:
+- **If a Deepwork project is active**, store the plan and worker outputs inside `.overclock/projects/<slug>/work/` (or `notes/` for `research`, `experiments/` for `science`).
+- **Otherwise**, create `.overclock/plan.md` and write outputs to `.overclock/work/` (add `.overclock/` to `.gitignore` if appropriate).
 
 ```markdown
 # Plan: <job>
 Goal: <one line>
-| # | Part | Agent | Model | Owns (files/areas) | Output file |
-|---|------|-------|-------|--------------------|-------------|
-| 1 | ...  | worker | sonnet | src/billing/ | .overclock/work/1-billing.md |
+| # | Part | Helper / Model | Owns (files/areas) | Output file |
+|---|------|----------------|--------------------|-------------|
+| 1 | ...  | worker (sonnet / flash / share) | src/billing/ | .../work/1-billing.md |
 Final check: <what to verify and how>
 ```
 
-- **Give each part a separate scope.** No two helpers own the same files or the same question, so nothing is explored twice.
-- **Use at most 5 helpers.** Usually 2–4 is right.
-- **Pick the cheapest model that can do the part:**
-  - `overclock:scout` (Haiku): finding things, listing, simple lookups.
-  - `overclock:worker` (Sonnet): analysis, research, writing or changing code.
-  - Override the model only if a part is unusually hard. Never use the most expensive model by default.
+- **Strict disjoint ownership:** no two helpers own the same files or the same question.
+- **Cap at 5 helpers** (usually 2–4 is optimal).
 
-## 3. Launch the helpers
+## 3. Platform dispatch table
 
-Launch all independent helpers in **one message**, so they run in parallel. Each prompt must stand on its own, because helpers can't see this conversation:
+| Need | Claude Code | Antigravity |
+|---|---|---|
+| Fast read-only codebase/file search | `overclock:scout` (`haiku`) | `invoke_subagent` (`research`, `Model: "flash_lite"` or `"flash"`) |
+| Research / analysis / verification | `overclock:worker` (`sonnet`) | `invoke_subagent` (`self`, `Model: "flash"`, or `research` if local-only) |
+| Parallel disjoint code edits | `overclock:worker` (`sonnet`, disjoint `You own:`) | `invoke_subagent` (`self`, `Workspace: "share"` for isolated worktrees) |
+| Wide homogeneous fan-out (4+ items) | Batch `overclock:worker` calls | `run_workflow` script or batched `invoke_subagent` |
 
-```
+## 4. Launch helpers in parallel
+
+Launch all independent helpers in **one turn** with self-contained prompts (point to files rather than pasting large text):
+
+```text
 Part <#> of <job>. Goal of the whole job: <one line>.
 Your part: <exact scope and question>.
-You own: <files/areas>; don't edit anything else.
-Context you need: <only the facts this part needs: paths, decisions, constraints>.
-Write full results to: .overclock/work/<#>-<name>.md
-Reply in your standard short format.
+You own: <files/areas>; do not edit anything else.
+Context you need: <only the essential paths, locked contracts, or constraints>.
+Sourcing rule: verify external claims/APIs against primary sources (apply Verisource rules if available); never invent URLs, DOIs, or APIs; mark unchecked items `❓ Unverified`.
+Write full results to: <output file path>
+Reply under 150 words with: Status, Result, Details path, Files changed, Open issues.
 ```
 
-Keep the context section short. Point to files rather than pasting their contents.
+## 5. Combine, verify once, and clean up
 
-## 4. Combine the results
-
-- Read the short replies first. Open a helper's output file only for the parts you actually need. That's the point of keeping the bulk in files.
-- If a helper reports `partial` or `blocked`, fix it yourself or relaunch only that part with a sharper prompt. Don't rerun everything.
-- Write the combined answer or finish the integration yourself.
-
-## 5. One final check
-
-Run a single check at the end, not a review after every step:
-- for code: run the tests or build once;
-- for research: check the 2–3 claims the conclusion depends on most;
-- if a separate check is really needed, launch one `overclock:worker` with a precise checklist.
-
-## 6. Report and clean up
-
-Tell the user the result. Mention briefly how the work was split (one line), and give the paths of any detailed output files worth keeping. Delete `.overclock/work/` files that aren't needed any more, unless the user wants them.
+- Read the short replies first; open a helper's output file only for parts you actually need.
+- If one helper reports `partial` or `blocked`, fix it yourself or relaunch only that piece.
+- Integrate edits cleanly (merge worktrees if using Antigravity `Workspace: "share"`), then run **one** verification pass at the end (full test/build for code, load-bearing source check for research, or fresh-seed/skeptical check for science).
+- Report the result concisely and link any kept artifacts. Clean up scratch files under `work/` that are no longer needed.
 
 ## Avoid
 
-- Splitting a small or tightly connected job.
-- Helpers that discuss with each other, or "agent teams". Claude's agent-teams feature is experimental and can use roughly 7× the tokens.
-- Pasting large text into helper prompts; point to files instead.
+- Splitting small or tightly coupled work.
+- Helper-to-helper chatter or "agent teams".
+- Pasting large file contents into prompts; pass file paths instead.
 - Reviewing every helper's output with another helper.
-- Re-reading everything a helper already summarized.

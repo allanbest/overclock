@@ -2,25 +2,51 @@
 
 # overclock
 
-**Make Claude cheaper per task without making it worse.** overclock is a small Claude plugin for Cowork and Claude Code. It keeps junk out of Claude's context, so every later message in the conversation costs less.
+**Token-efficient deep research, scientific experimentation, iterative software building, and budget-aware multi-agent orchestration — for Claude (Code & Cowork) and Antigravity.**
+
+overclock v1.0 combines two complementary layers:
+1. **Runtime token efficiency (Claude Code / Cowork):** trims noisy command output, injects tiny lean habits, blocks accidental cold-cache re-reads, and writes zero-LLM transcript checkpoints.
+2. **Deepwork + Orchestrate (Claude Code, Cowork & Antigravity):** structured long-horizon workflows (`science`, `build`, `research`) with disk-backed project memory, falsifiable hypothesis/spec loops, Verisource anti-hallucination verification, and budget-aware multi-agent splitting — adding **0 tokens** when no project is active.
 
 ## Why this works
 
-Each message you send re-sends the whole conversation to the model. When a command prints a 2,000-line log, you pay for that log again on every following turn. Most "make Claude cheaper" tricks try to make Claude *write* less. In agent work, though, most of the cost is what Claude *reads*. overclock goes after that.
+Each message re-sends the whole conversation to the model. Long logs, unfocused multi-agent fan-outs, and cold-cache session resumes burn context and subscription limits fast, while long scientific or software tasks lose track of dead ends and contracts across breaks. overclock keeps raw noise out of context and stores structured state (`state.md`, `lab.md`, `spec.md`, `tasks.md`, `decisions.md`) on disk so fresh sessions pick up cleanly.
 
 ## What's inside
 
+### 1. Context & Token Efficiency (Claude Code / Cowork)
+
 | Part | What it does |
 |---|---|
-| **Output trimmer** (hook) | When a command prints a lot (over ~6,000 characters), Claude gets a compact version: the start, the end, **every error/warning line** with context, and repeated lines collapsed (`[×3000]`). The full output stays in a file, and Claude gets its path. Short outputs are never touched. |
-| **Lean rules** (hook, ~150 tokens, once per session) | Lead with the answer, batch tool calls, read only what's needed, and trust the trimmed output. |
-| **scout** (subagent) | A cheap Haiku explorer for searches that need many file reads. It returns a short summary instead of filling the main conversation. |
-| **Idle-session warning** (hook) | Claude's cache of your conversation lasts about an hour. If you come back to a **big** conversation (60k+ tokens) after that, your next message re-processes the whole thing at full cost. overclock holds that message once, before any usage is spent, and suggests a new chat or a handoff. Send it again to continue anyway. |
-| **/overclock:orchestrate** (skill) + **worker** (Sonnet subagent) | Cheap multi-agent work. It first decides whether splitting is worth it at all (multi-agent setups use about 15× the tokens of a chat, per Anthropic). If it is, it gives each helper its own piece, caps it at 3–5 helpers, uses the cheapest suitable model (Haiku scout or Sonnet worker), and has helpers write details to files and return under 150 words. One final check at the end, no agent teams. |
-| **/overclock:handoff** (skill) | Writes a ~300-word `HANDOFF.md` so a long task can continue in a fresh, cheap session. Say "Continue from HANDOFF.md" in the new chat. |
-| **Compaction guide** (hook) | When the conversation gets compacted, tells the summary what to keep (goal, decisions, paths, open errors) and what to drop. |
+| **Output trimmer** (hook) | When a command prints over ~6,000 characters, Claude gets a compact version: start, end, **every error/warning line** with context, and repeated lines collapsed (`[×3000]`). The full output stays in a log file whose path is included. Short outputs are never touched. |
+| **Lean rules** (hook, ~150 tokens, once per session) | Lead with the answer, batch tool calls, read only needed line ranges, and trust trimmed output. |
+| **`scout` & `worker`** (Claude subagents in `claude-agents/`) | `overclock:scout` (Haiku) for broad read-only lookups; `overclock:worker` (Sonnet) for scoped research/implementation writing full results to disk and returning <150 words. |
+| **Checkpoint + auto-resume** (hooks) | At the end of every Claude turn, writes a ~1–2 KB transcript checkpoint (`~/.claude/overclock/checkpoints/<project>/`) with zero extra model calls. New chats (`/clear` or startup) load the newest checkpoint automatically. |
+| **Idle-session warning** (hook) | Holds the first message once when returning to a 60k+ token chat after the 1-hour cache expires, pointing to `/clear` or a new chat. |
+| **Compaction guide** (hook) | Steers compaction summaries to keep goals, paths, unresolved errors, and active Deepwork dead ends. |
 
-## Measured results
+### 2. Deepwork & Multi-Agent Orchestration (Claude + Antigravity)
+
+| Skill / Command | What it does |
+|---|---|
+| **`/overclock:deepwork`** | Entry point for long-horizon projects. Includes a **Light Path Gate** (simple questions answer directly with no files created) and routes into one of 3 modes on a shared `.overclock/projects/<slug>/` core. |
+| **`/overclock:orchestrate`** | Budget-aware multi-agent splitter (checks if splitting beats serial work, caps at 2–5 helpers, enforces disjoint file ownership, stores details on disk, returns <=150 words). Dispatches natively to `overclock:scout`/`worker` on Claude Code and `research`/`self` (`Workspace: "share"`)/`run_workflow` on Antigravity. |
+| **`/overclock:reflect`** | Mid-project audit: enforces the 2-failure root-cause reset, moves refuted attempts to dead ends, checks Verisource claims/spec alignment, and tightens `state.md` for a fresh session. |
+| **`/overclock:handoff`** | Writes a compact ~300-word `HANDOFF.md` (and reminds to sync `state.md` if a Deepwork project is active). |
+| **`/overclock:stop`** | Pauses, completes, or archives the active project and removes `.overclock/active` so session hooks return to 0-token silence. |
+
+#### Deepwork Modes
+
+| | 🧪 `science` (ML, physics, math) | 🛠️ `build` (serious software & apps) | 🌐 `research` (web & literature) |
+|---|---|---|---|
+| **Loop** | Propose -> Baseline -> Falsifiable Hypothesis -> Run/Derive -> Audit & Log Dead Ends -> Repeat | Architecture Spec -> Vertical Slice Plan -> Build -> Automated Test -> 2-Failure Reflect/Fix -> Repeat | Decompose -> Parallel Source Gathering -> Reflect & Fill Gaps -> Verify Key Claims -> Synthesize |
+| **Key files** | `lab.md` + `experiments/` | `spec.md` + `tasks.md` | `plan.md` + `notes/` + `report.md` |
+| **Parallelism** | Mostly serial in one head; helpers only for lit grounding, orthogonal sweeps, or final skeptical check | Serial walking skeleton (`T1`) + coupled slices; parallel waves only for disjoint modules with locked interfaces | 2–4 cheap parallel workers (1 sub-question each) |
+| **Rigor & Anti-Hallucination** | Pre-registered kill criteria, domain sanity checklists (leakage, units/limits, counterexamples), dead-end graveyard | Real test/build/smoke verification, verified real library APIs, 2-failure root-cause rule, spec audit | Paired with [Verisource](https://github.com/allanbest/verisource) (`fact-check` skill) credibility tiers, DOI verification, and `✅`/`⚠️`/`❌`/`❓` labels |
+
+Both Claude Code (`startup`, `clear`, `compact`) and Antigravity (`SessionStart`) automatically load the active project's compact `state.md` (<=25 lines / <=1,800 chars) when `.overclock/active` exists — and inject **0 tokens** when no project is active.
+
+## Measured results (v0.3.0 / v0.4.0 Claude Code benchmarks)
 
 Real Claude Code sessions (Opus 5.5) with and without overclock, interleaved, 3–6 runs each, on 2026-11-24. Every answer was correct in both versions.
 
@@ -31,8 +57,6 @@ Real Claude Code sessions (Opus 5.5) with and without overclock, interleaved, 3�
 | Find a value in a 30-file codebase | $0.166 | $0.169 | +2% |
 | Plain question, no tools | $0.127 | $0.130 | +3% |
 
-**In short:** sessions that run commands with long output get much cheaper. Simple chats cost about 2–3% more, which is the price of the rules.
-
 ### Multi-agent work
 
 Task: "use multiple agents" to count and summarize incident lines across 3 folders (30 files). Main session on Sonnet, one run each (2026-11-25), both answers fully correct:
@@ -42,39 +66,28 @@ Task: "use multiple agents" to count and summarize incident lines across 3 folde
 | Without overclock | 3 × Sonnet (Claude's default: same model as the main session) | $0.55 |
 | With overclock | 3 × `overclock:scout` on Haiku | $0.20 (−64%) |
 
-That's a single run per version, so treat it as an early sign, not a benchmark. When `/overclock:orchestrate` was asked to write per-folder reports, it correctly decided one search was enough and used no helpers at all. Not splitting a small job is the cheapest outcome. With Opus as the main model, the gap should be larger, since Claude's default helpers then run on Opus too.
+### Checkpoint + auto-resume
 
-### Does it stretch subscription usage limits?
+Test (2026-11-25, Sonnet): a two-turn coding session, then "continue where we left off" in a **new chat** vs. resuming the old one. Both finished the next step correctly.
 
-Probably, but the meter is too coarse to prove it at small scale. [`bench/quota_ab.py`](bench/quota_ab.py) runs the same tasks with and without overclock in alternating blocks and reads Claude's own usage meter (5-hour and weekly) after each block. A first run with 24 Sonnet sessions (2026-11-25):
+| | First request processes |
+|---|---|
+| Resume the old conversation (what a cold re-read costs in full) | ~55k tokens |
+| New chat + checkpoint | ~38k, of which ~14k new (the rest is Claude Code's shared system prompt) |
 
-| | Without | With overclock |
-|---|---|---|
-| 5-hour limit used | 4% | 4% |
-| Weekly limit used | 0% | 1% |
-| Same runs priced at API rates | $1.39 | $0.97 (−30%) |
-| Cache writes / output tokens | 301k / 9.7k | 210k / 6.7k (−30% / −31%) |
-| Correct answers | 12/12 | 12/12 |
+### Subscription usage meter check
 
-The meter only reports whole percentage points, and each block moved it by just 1–3 points, so the quota numbers are a tie within rounding noise. The token mix explains why overclock should still help your limits. Anthropic doesn't say whether cache reads (re-reading the conversation so far) count toward limits, but overclock's savings come mainly from **cache writes and output tokens**, which almost certainly do. A conclusive meter result would need roughly 10× more runs.
-
-What I tried that didn't work:
-- Changing *small* outputs, even just removing colour codes, confused Claude into re-checking, and cost 30% more. overclock now leaves them alone.
-- A "use quiet flags / tail" rule made Claude cut off the line it needed. It was removed.
-- Without the rules, Claude distrusts trimmed output and reads the full log anyway. The rules are what make the trimming pay off.
+[`bench/quota_ab.py`](bench/quota_ab.py) ran 24 Sonnet sessions (2026-11-25) alternating with/without overclock: 5-hour limit moved 4% vs 4%, weekly moved 0% vs 1% (within 1-point rounding noise), while API-equivalent cost dropped $1.39 -> $0.97 (−30%, 12/12 correct).
 
 ## Limits (honest list)
 
-- **Failed commands aren't trimmed.** When a command exits with an error (for example failing tests), Claude Code hands the hook text that's already cut, so overclock can't improve it. Claude Code's built-in truncation applies instead.
+- **Failed commands aren't trimmed in Claude Code.** When a command exits with an error, Claude Code hands the hook text that's already cut, so built-in truncation applies instead.
 - **No effect on context size or prices.** A plugin can't make the context window bigger; it can only keep it emptier.
-- **Cowork hasn't been tested directly.** Cowork loads plugin hooks, skills and agents, and these tests ran in Claude Code. The hooks need `python3`; if it's missing they do nothing (fail-safe). In Cowork cloud sessions, output replacement is ignored for some tools.
-- **scout** only helps on large searches and wasn't triggered in the small test codebase.
-- The **handoff** and **compaction** parts are simple and haven't been benchmarked.
-- The **idle warning** was tested in Claude Code. The held message used no usage (0 turns), and the second send went through. Its savings depend on how often you return to big, stale conversations, so they aren't benchmarked. How Cowork displays the warning is untested.
+- **Output trimming & transcript checkpointing are Claude-specific.** Antigravity uses overclock's Deepwork skills, multi-agent orchestration, and zero-overhead `SessionStart` project loader (`hooks.json`).
+- **Cowork cloud limits.** Cowork loads skills, agents, and hooks, though output replacement is ignored for some tools in Cowork cloud sessions.
+- **Hooks require `python3`**; if unavailable they fail open cleanly.
 
 ## Install
-
-**Cowork / Claude app:** Customize → Plugins → upload `overclock.zip` (from the releases page), or add the marketplace `allanbest/overclock`.
 
 **Claude Code:**
 ```
@@ -82,18 +95,33 @@ What I tried that didn't work:
 /plugin install overclock@overclock
 ```
 
-To turn it off, disable the plugin in the Plugins panel or run `/plugin`. To skip trimming for one command, include `OVERCLOCK_RAW` in it (for example `OVERCLOCK_RAW=1 npm test`).
+**Cowork / Claude app:**
+Customize → Plugins → upload `dist/overclock.zip` (built via `./scripts/build-zip.sh`), or add marketplace `allanbest/overclock`.
 
-## Settings (Claude Code only, via environment variables)
+**Antigravity:**
+```bash
+agy plugin install https://github.com/allanbest/overclock
+```
+Or copy/link the repo into `~/.gemini/config/plugins/overclock`.
+
+*(Optional companion)*: install [Verisource](https://github.com/allanbest/verisource) (`fact-check` skill) for full credibility-tier verification and DOI citation formatting inside Deepwork research and literature grounding.
+
+To skip Bash output trimming for one command in Claude Code, include `OVERCLOCK_RAW` (e.g. `OVERCLOCK_RAW=1 npm test`).
+
+## Settings (environment variables)
 
 | Variable | Effect |
 |---|---|
-| `OVERCLOCK_OFF=1` | Disable output trimming |
-| `OVERCLOCK_RULES=off` | Don't add the lean rules |
-| `OVERCLOCK_TRIM_ABOVE=6000` | Character count above which output is trimmed |
-| `OVERCLOCK_IDLE_MINUTES=60` | Idle time before the warning |
+| `OVERCLOCK_OFF=1` | Disable Bash output trimming, idle check, and transcript checkpointing |
+| `OVERCLOCK_RULES=off` | Don't add Claude lean rules at `SessionStart` |
+| `OVERCLOCK_DEEPWORK=off` | Don't auto-load `.overclock/active` project state at `SessionStart` / `PreCompact` |
+| `OVERCLOCK_TRIM_ABOVE=6000` | Character count above which Bash output is trimmed |
+| `OVERCLOCK_IDLE_MINUTES=60` | Idle time before the cold-cache warning |
 | `OVERCLOCK_IDLE_MIN_TOKENS=60000` | Only warn for conversations bigger than this |
-| `OVERCLOCK_IDLE_MODE=note` | Show the warning without holding the message |
+| `OVERCLOCK_IDLE_MODE=note` | Show the idle warning without holding the message |
+| `OVERCLOCK_CHECKPOINT=off` | Don't write transcript checkpoints (also stops checkpoint auto-resume) |
+| `OVERCLOCK_RESUME=off` | Keep writing checkpoints but don't load them in new chats |
+| `OVERCLOCK_RESUME_DAYS=7` | Ignore transcript checkpoints older than this |
 
 ## License
 

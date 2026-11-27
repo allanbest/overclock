@@ -1,0 +1,18 @@
+{
+  "name": "overclock",
+  "displayName": "Overclock",
+  "version": "1.0.0",
+  "description": "Token-efficient deep research, scientific experimentation, iterative software building, and budget-aware multi-agent orchestration — with Claude context compression and Antigravity native support.",
+  "logo": "assets/icon.svg",
+  "author": {
+    "name": "allanbest",
+    "url": "https://github.com/allanbest"
+  },
+  "homepage": "https://github.com/allanbest/overclock",
+  "repository": "https://github.com/allanbest/overclock",
+  "suggestedPrompts": [
+    "Start a deepwork science project: form a baseline, falsifiable hypotheses, and experiment loop",
+    "Start a deepwork software build: spec, vertical slices, automated tests, and reflect/fix loop",
+    "Orchestrate parallel research across sub-questions with verified sources"
+  ]
+}

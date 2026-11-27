@@ -1,7 +1,11 @@
 {
   "name": "overclock",
-  "description": "Make Claude cheaper per task without making it worse: trims noisy command output before Claude reads it, sets lean working habits, delegates work to cheap Haiku/Sonnet helpers, orchestrates multi-agent jobs efficiently, and hands long tasks off to fresh sessions.",
-  "version": "0.3.0",
+  "description": "Token-efficient deep research, scientific experimentation, iterative software building, and budget-aware multi-agent orchestration — plus Claude context compression, idle-cache protection, and automatic session checkpointing.",
+  "version": "1.0.0",
+  "agents": [
+    "./claude-agents/scout.md",
+    "./claude-agents/worker.md"
+  ],
   "author": {
     "name": "allanbest",
     "url": "https://github.com/allanbest"
@@ -15,6 +19,12 @@
     "context",
     "efficiency",
     "compression",
-    "hooks"
+    "hooks",
+    "research",
+    "deepwork",
+    "multi-agent",
+    "orchestration",
+    "scientific-method",
+    "iterative-building"
   ]
 }

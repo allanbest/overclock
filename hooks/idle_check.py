@@ -94,15 +94,27 @@ def main():
     hours = idle_min / 60
     idle_txt = f"{hours:.1f} hours" if hours >= 1.5 else f"{idle_min:.0f} minutes"
     size_txt = f"{tokens / 1000:.0f}k-token"
+    cp_note = ""
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from checkpoint import project_dir, sid8
+        cp = os.path.join(project_dir(path), f"{sid8(event.get('session_id'))}.md")
+        if os.path.isfile(cp):
+            cp_note = f"~{os.path.getsize(cp) // 4 + 300} tokens"
+    except Exception:
+        pass
+    if cp_note:
+        first = (f"  • Cheapest: type /clear or start a new chat in this folder. overclock saved a checkpoint of this "
+                 f"conversation (goal, plan, files, last step) and loads it automatically ({cp_note} instead of {size_txt.split('-')[0]}).\n")
+    else:
+        first = "  • Cheapest: if you don't need this conversation's details, start a new chat.\n"
     advice = (
         f"overclock: this conversation has been idle for {idle_txt}, so its cache has expired. "
         f"Your next message will re-process the whole {size_txt} conversation at full cost, which uses "
         f"a noticeable part of your usage limit.\n"
         f"Options:\n"
-        f"  • Cheapest: if you don't need this conversation's details, start a new chat.\n"
-        f"  • Need the context? Send /overclock:handoff here (one full re-read), then say "
-        f"\"Continue from HANDOFF.md\" in a new chat, so later messages are cheap.\n"
-        f"  • Or send your message again to continue here anyway (you won't be asked twice)."
+        + first
+        + f"  • Or send your message again to continue here anyway (you won't be asked twice)."
     )
     with open(marker, "w") as f:
         f.write(gap_id)

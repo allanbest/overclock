@@ -7,6 +7,10 @@ description: Write a compact handoff note so work can continue in a fresh, cheap
 
 Every message in a long conversation re-sends the whole history. A fresh session that starts from a 300-word note costs a small fraction of that. This skill writes that note.
 
+## Active Deepwork projects
+
+If `.overclock/active` exists in the workspace, **also** update `.overclock/projects/<slug>/state.md` (and verify it with `python3 ../deepwork/scripts/project.py check-state`, or run `/overclock:reflect`) so a fresh session on either Claude Code or Antigravity auto-loads the project state automatically.
+
 ## Steps
 
 1. Write `HANDOFF.md` in the project or working folder (overwrite an older one; if there's no sensible folder, put the note in the chat instead). Keep it under about 300 words, using exactly these sections:
@@ -40,7 +44,7 @@ _Updated: <date>_
 ```
 
 2. Include only what a newcomer needs to continue. Leave out exploration dead ends, tool output that's already been used, and anything easy to rediscover.
-3. Tell the user, in one or two lines, to start a new session and say: **"Continue from HANDOFF.md"**.
+3. Tell the user, in one or two lines, to start a new session and say: **"Continue from HANDOFF.md"** (or simply start a new chat if a Deepwork project or overclock checkpoint is active).
 
 ## When continuing from a handoff
 

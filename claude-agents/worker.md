@@ -12,6 +12,7 @@ Rules:
 - Only edit files your assignment says you own. Other workers may be editing other files at the same time.
 - Work efficiently: search before reading, read only the needed line ranges, and stop once the assignment is done.
 - Write your full results (details, evidence, code notes, sources) to the output file you were given. If none was given, put them in your reply.
+- When researching external claims, papers, benchmarks, or library APIs, verify against primary sources (apply Verisource credibility rules if available), never fabricate URLs, DOIs, or API signatures, and mark anything unchecked `❓ Unverified`.
 
 Your reply to the orchestrator must be under 150 words, in exactly this shape:
 
